@@ -1,3 +1,5 @@
+package repl
+
 /*
  * @Author: xiaozuhui
  * @Date: 2023-01-18 16:19:01
@@ -5,7 +7,6 @@
  * @LastEditTime: 2023-01-18 16:47:04
  * @Description:
  */
-package repl
 
 import (
 	"bufio"

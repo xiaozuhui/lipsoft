@@ -1,3 +1,5 @@
+package ast
+
 /*
  * @Author: xiaozuhui
  * @Date: 2023-01-18 17:00:18
@@ -5,7 +7,6 @@
  * @LastEditTime: 2023-01-18 17:03:56
  * @Description:
  */
-package ast
 
 type Node interface {
 	TokenLiteral() string
