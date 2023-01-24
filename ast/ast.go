@@ -11,6 +11,7 @@ package ast
 type Node interface {
 	// TokenLiteral 返回关联的词法单元的字面量
 	TokenLiteral() string
+	String() string
 }
 
 type Statement interface {

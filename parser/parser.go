@@ -10,10 +10,23 @@ import (
 type Parser struct {
 	lexer *lexer.Lexer // 词法分析器实例
 
-	curToken  token.Token // 当前词法单元
-	peekToken token.Token // 下一个词法单元
+	curToken  token.Token // 当前词法单元指针
+	peekToken token.Token // 下一个词法单元指针
 
 	errors []string // 错误处理
+
+	prefixParseFns map[token.TokenType]prefixParseFn // 前缀表达式的映射
+	infixParseFns  map[token.TokenType]infixParseFn  // 中缀表达式的映射
+}
+
+// registerPrefix 注册前缀表达式
+func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
+	p.prefixParseFns[tokenType] = fn
+}
+
+// registerInfix 注册中缀表达式
+func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
+	p.infixParseFns[tokenType] = fn
 }
 
 func New(l *lexer.Lexer) *Parser {
@@ -21,6 +34,12 @@ func New(l *lexer.Lexer) *Parser {
 
 	p.nextToken() // 读取两个词法单元
 	p.nextToken()
+
+	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
+	p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.registerPrefix(token.INT, p.parseIntegerLiteral)
+	p.registerPrefix(token.BANG, p.parsePrefixExpression)  // 前缀表达式 !
+	p.registerPrefix(token.MINUS, p.parsePrefixExpression) // 前缀表达式 -
 
 	return &p
 }
@@ -61,7 +80,7 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.RETURN:
 		return p.parseReturnStatement()
 	default:
-		return nil
+		return p.parseExpressionStatement()
 	}
 }
 
@@ -114,4 +133,29 @@ func (p *Parser) exceptPeek(t token.TokenType) bool {
 	}
 	p.peekError(t) // 错误
 	return false
+}
+
+func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	stmt := &ast.ExpressionStatement{Token: p.curToken}
+	stmt.Expression = p.parseExpression(LOWEST)
+	// 如果后续词法单元是分号，那么将当前词法单元指针指向分号；分号是可缺省的
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+	return stmt
+}
+
+func (p *Parser) noPrefixParseFnError(t token.TokenType) {
+	msg := fmt.Sprintf("no prefix parse function for %s found", t)
+	p.errors = append(p.errors, msg)
+}
+
+func (p *Parser) parseExpression(precedence int) ast.Expression {
+	prefix := p.prefixParseFns[p.curToken.Type]
+	if prefix == nil {
+		p.noPrefixParseFnError(p.curToken.Type)
+		return nil
+	}
+	leftExp := prefix()
+	return leftExp
 }
