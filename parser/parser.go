@@ -35,13 +35,38 @@ func New(l *lexer.Lexer) *Parser {
 	p.nextToken() // 读取两个词法单元
 	p.nextToken()
 
+	// 后缀对应
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)  // 前缀表达式 !
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression) // 前缀表达式 -
 
+	// 中缀对应
+	p.infixParseFns = make(map[token.TokenType]infixParseFn)
+	p.registerInfix(token.PLUS, p.parseInfixExpression)     // 加
+	p.registerInfix(token.MINUS, p.parseInfixExpression)    // 减
+	p.registerInfix(token.SLASH, p.parseInfixExpression)    // 除
+	p.registerInfix(token.ASTERISK, p.parseInfixExpression) // 乘
+	p.registerInfix(token.EQ, p.parseInfixExpression)       // 等于
+	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)   // 不等于
+	p.registerInfix(token.LT, p.parseInfixExpression)       // 大于
+	p.registerInfix(token.GT, p.parseInfixExpression)       // 小于
+
 	return &p
+}
+
+// parseInfixExpression 解析中缀表达式
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	expression := &ast.InfixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     left,
+	}
+	precedence := p.curPrecedence() // 获取当前词法单元的优先级
+	p.nextToken()                   // 当前的
+	expression.Right = p.parseExpression(precedence)
+	return expression
 }
 
 func (p *Parser) peekError(t token.TokenType) {
