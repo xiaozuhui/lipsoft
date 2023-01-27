@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"lipsoft/ast"
+	"lipsoft/token"
 	"strconv"
 )
 
@@ -38,4 +39,30 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	p.nextToken() // 需要将词法单元指针前移
 	expression.Right = p.parseExpression(PREFIX)
 	return expression
+}
+
+// parseInfixExpression 解析中缀表达式
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	expression := &ast.InfixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     left,
+	}
+	precedence := p.curPrecedence() // 获取当前词法单元的优先级
+	p.nextToken()                   // 当前的
+	expression.Right = p.parseExpression(precedence)
+	return expression
+}
+
+func (p *Parser) parseBoolean() ast.Expression {
+	return &ast.Boolean{Token: p.curToken, Value: p.curTokenIs(token.TRUE)}
+}
+
+func (p *Parser) parseGroupedExpression() ast.Expression {
+	p.nextToken()
+	exp := p.parseExpression(LOWEST)
+	if !p.exceptPeek(token.RPAREN) {
+		return nil
+	}
+	return exp
 }

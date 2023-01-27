@@ -41,6 +41,9 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)  // 前缀表达式 !
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression) // 前缀表达式 -
+	p.registerPrefix(token.TRUE, p.parseBoolean)
+	p.registerPrefix(token.FALSE, p.parseBoolean)
+	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 
 	// 中缀对应
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
@@ -54,19 +57,6 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.GT, p.parseInfixExpression)       // 小于
 
 	return &p
-}
-
-// parseInfixExpression 解析中缀表达式
-func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
-	expression := &ast.InfixExpression{
-		Token:    p.curToken,
-		Operator: p.curToken.Literal,
-		Left:     left,
-	}
-	precedence := p.curPrecedence() // 获取当前词法单元的优先级
-	p.nextToken()                   // 当前的
-	expression.Right = p.parseExpression(precedence)
-	return expression
 }
 
 func (p *Parser) peekError(t token.TokenType) {
@@ -175,6 +165,7 @@ func (p *Parser) noPrefixParseFnError(t token.TokenType) {
 	p.errors = append(p.errors, msg)
 }
 
+// parseExpression 解析表达式，使用普拉特解析
 func (p *Parser) parseExpression(precedence int) ast.Expression {
 	prefix := p.prefixParseFns[p.curToken.Type]
 	if prefix == nil {
@@ -182,5 +173,13 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 		return nil
 	}
 	leftExp := prefix()
+	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() { // 判断是否到分号，并且下一个词法单元优先级是否大于期望优先级
+		infix := p.infixParseFns[p.peekToken.Type]
+		if infix == nil {
+			return leftExp
+		}
+		p.nextToken()
+		leftExp = infix(leftExp)
+	}
 	return leftExp
 }
