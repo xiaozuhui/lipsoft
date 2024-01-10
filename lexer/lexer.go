@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"lipsoft/token"
+	"testing"
 )
 
 /*
@@ -17,8 +18,8 @@ import (
 
 type Lexer struct {
 	input        string
-	position     int
-	readPosition int
+	position     int  // 所输入字符串中的当前位置（指向当前字符）
+	readPosition int  // 所输入字符串中的当前读取位置（指向当前字符之后的一个字符）
 	ch           byte // 当前正在读取的字符
 }
 
@@ -146,4 +147,34 @@ func isLetter(ch byte) bool {
 
 func isDigit(ch byte) bool {
 	return '0' <= ch && ch <= '9'
+}
+
+func TestNextToken(t *testing.T) {
+	input := `=+(){},;`
+	tests := []struct {
+		expectedType    token.TokenType
+		expectedLiteral string
+	}{
+		{token.ASSIGN, "="},
+		{token.PLUS, "+"},
+		{token.LPAREN, "("},
+		{token.RPAREN, ")"},
+		{token.LBRACE, "{"},
+		{token.RBRACE, "}"},
+		{token.COMMA, ","},
+		{token.SEMICOLON, ";"},
+		{token.EOF, ""},
+	}
+	l := New(input)
+	for i, tt := range tests {
+		tok := l.NextToken()
+		if tok.Type != tt.expectedType {
+			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
+				i, tt.expectedType, tok.Type)
+		}
+		if tok.Literal != tt.expectedLiteral {
+			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
+				i, tt.expectedLiteral, tok.Literal)
+		}
+	}
 }
